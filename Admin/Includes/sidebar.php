@@ -60,7 +60,7 @@
         <div id="collapseBootstrapassests" class="collapse" aria-labelledby="headingBootstrap" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Student Time</h6>
-                <a class="collapse-item" href="approval.php">Approval</a>
+                <a class="collapse-item" href="approval.php">Submission Approval</a>
                 <a class="collapse-item" href="otApproval.php">OT Approval</a> <!-- New OT Approval link -->
                 <a class="collapse-item" href="viewtime.php">Time Table</a>
                 <a class="collapse-item" href="archiveOtApproval.php">Archived OtApproval</a>
