@@ -4,6 +4,7 @@ ob_start();
 include '../Includes/session.php';
 // Include database connection
 include '../Includes/dbcon.php';
+include '../Includes/audit.php';
 
 // Initialize status message variable
 $statusMsg = '';
@@ -26,10 +27,14 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     if ($currentStatus == 'activate') {
         $updateQuery = "UPDATE tblstudents SET ot_isactive = 1 WHERE id = '$studentId'";
         mysqli_query($conn, $updateQuery);
+        // Audit: OT activation
+        audit_log($conn, 'activate_ot', 'student', (string)$studentId, null);
         $statusMsg = "<div class='alert alert-success'>Student activated successfully!</div>";
     } else if ($currentStatus == 'deactivate') {
         $updateQuery = "UPDATE tblstudents SET ot_isactive = 0 WHERE id = '$studentId'";
         mysqli_query($conn, $updateQuery);
+        // Audit: OT deactivation
+        audit_log($conn, 'deactivate_ot', 'student', (string)$studentId, null);
         $statusMsg = "<div class='alert alert-danger'>Student deactivated successfully!</div>";
     }
 

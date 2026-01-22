@@ -26,6 +26,7 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Admin Actions</h6>
                 <a class="collapse-item" href="createAdmin.php">Create Admin Account</a>
+                <a class="collapse-item" href="auditLogs.php">Audit Logs</a>
             </div>
         </div>
     </li>
@@ -65,6 +66,7 @@
                 <a class="collapse-item" href="viewtime.php">Time Table</a>
                 <a class="collapse-item" href="archiveOtApproval.php">Archived OtApproval</a>
                 <a class="collapse-item" href="archiveApproval.php">Archived Approval</a>
+                <a class="collapse-item" href="setSubmissionDay.php">Set Day of Submission</a>
                 <!--<a class="collapse-item" href="dtrpictures.php">DTR Pictures</a> !-->
             </div>
         </div>

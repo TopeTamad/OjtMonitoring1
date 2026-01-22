@@ -5,6 +5,11 @@ error_reporting(0);
 include '../Includes/session.php';
 include '../Includes/dbcon.php';
 
+// Ensure all date/time checks use Manila timezone
+if (function_exists('date_default_timezone_set')) {
+    @date_default_timezone_set('Asia/Manila');
+}
+
 // Fetch students data from the database
 $query = "SELECT id, admissionNumber, firstName, lastName, classId, contact, comp_name, comp_link, email, address, ot_isactive FROM tblstudents";
 $result = mysqli_query($conn, $query);
@@ -33,7 +38,7 @@ $admissionNumber = $_SESSION['admissionNumber'];
 if (isset($_SESSION['email'])) {
     // Fetch the admission number, full name, company name, and company link from the database
     $username = $_SESSION['email']; // Assuming username is stored in session
-    $query = "SELECT admissionNumber, firstName, lastName, comp_name, comp_link, classId, ot_isactive FROM tblstudents WHERE email = '$username'";
+    $query = "SELECT admissionNumber, firstName, lastName, comp_name, comp_link, classId, ot_isactive, sessionTermId FROM tblstudents WHERE email = '$username'";
     $result = mysqli_query($conn, $query);
     if ($result) {
         $row = mysqli_fetch_assoc($result);
@@ -49,6 +54,7 @@ if (isset($_SESSION['email'])) {
 
         $_SESSION['classId'] = $row['classId']; // Store classId in session
         $_SESSION['ot_isactive'] = $row['ot_isactive']; // Store ot_isactive in session
+        $_SESSION['sessionTermId'] = $row['sessionTermId']; // Store student's session term id
     }
 }
 
@@ -65,6 +71,105 @@ if (isset($_SESSION['classId'])) {
 // Check if the last submission date is not today, reset the submission status
 if (isset($_SESSION['last_submission_date']) && $_SESSION['last_submission_date'] !== date('Y-m-d')) {
     $_SESSION['form_submitted'] = false; // Reset the submission status
+}
+
+// Load session submission window config for the student's session
+$studentSessionId = isset($_SESSION['sessionTermId']) ? $_SESSION['sessionTermId'] : '';
+$sessionConfig = [
+    'Submission_Start_Day' => '',
+    'Submission_End_Day' => '',
+    'Start_Time' => null,
+    'End_Time' => null
+];
+if ($studentSessionId !== '') {
+    $cfg = mysqli_query($conn, "SELECT Submission_Start_Day, Submission_End_Day, Start_Time, End_Time FROM tblsessionterm WHERE Id='".mysqli_real_escape_string($conn, $studentSessionId)."'");
+    if ($cfg && mysqli_num_rows($cfg) > 0) {
+        $sessionConfig = mysqli_fetch_assoc($cfg);
+    }
+} else {
+    // fallback to active session if student's session not set
+    $cfg = mysqli_query($conn, "SELECT Submission_Start_Day, Submission_End_Day, Start_Time, End_Time, Id FROM tblsessionterm WHERE isActive='1' LIMIT 1");
+    if ($cfg && mysqli_num_rows($cfg) > 0) {
+        $tmp = mysqli_fetch_assoc($cfg);
+        $sessionConfig = $tmp;
+        $_SESSION['sessionTermId'] = $tmp['Id'];
+        $studentSessionId = $tmp['Id'];
+    }
+}
+
+// Derive current window and human-readable notice for page display
+$nowDayName = date('l');
+$nowTime = date('H:i:s');
+$startDay = isset($sessionConfig['Submission_Start_Day']) ? $sessionConfig['Submission_Start_Day'] : '';
+$endDay = isset($sessionConfig['Submission_End_Day']) ? $sessionConfig['Submission_End_Day'] : '';
+$startTimeCfg = isset($sessionConfig['Start_Time']) ? $sessionConfig['Start_Time'] : '';
+$endTimeCfg = isset($sessionConfig['End_Time']) ? $sessionConfig['End_Time'] : '';
+
+if ($startDay === '' && $endDay === '') {
+    $startDay = 'Thursday';
+    $endDay = 'Friday';
+}
+
+$dayMap = [
+    'sunday' => 0,
+    'monday' => 1,
+    'tuesday' => 2,
+    'wednesday' => 3,
+    'thursday' => 4,
+    'friday' => 5,
+    'saturday' => 6
+];
+$nowDow = intval(date('w'));
+$startDow = isset($dayMap[strtolower(trim($startDay))]) ? $dayMap[strtolower(trim($startDay))] : null;
+$endDow = isset($dayMap[strtolower(trim($endDay))]) ? $dayMap[strtolower(trim($endDay))] : null;
+
+$isWithinWindowNow = false;
+if ($startDow !== null && $endDow !== null) {
+    $inRange = false;
+    if ($startDow <= $endDow) {
+        $inRange = ($nowDow >= $startDow && $nowDow <= $endDow);
+    } else {
+        $inRange = ($nowDow >= $startDow || $nowDow <= $endDow);
+    }
+    if (!empty($startTimeCfg) && !empty($endTimeCfg)) {
+        if ($inRange) {
+            if ($startDow === $endDow) {
+                if ($nowDow === $startDow) {
+                    if ($startTimeCfg <= $endTimeCfg) {
+                        $isWithinWindowNow = ($nowTime >= $startTimeCfg && $nowTime <= $endTimeCfg);
+                    } else {
+                        $isWithinWindowNow = ($nowTime >= $startTimeCfg);
+                    }
+                }
+            } else {
+                if ($nowDow === $startDow) {
+                    $isWithinWindowNow = ($nowTime >= $startTimeCfg);
+                } elseif ($nowDow === $endDow) {
+                    $isWithinWindowNow = ($nowTime <= $endTimeCfg);
+                } else {
+                    $isWithinWindowNow = true;
+                }
+            }
+        }
+    } else {
+        if ($inRange) {
+            $isWithinWindowNow = true;
+        }
+    }
+}
+
+$submissionWindowHuman = trim($startDay).' to '.trim($endDay);
+if (!empty($startTimeCfg) && !empty($endTimeCfg)) {
+    $submissionWindowHuman = trim($startDay).' '.trim($startTimeCfg).' to '.trim($endDay).' '.trim($endTimeCfg);
+}
+
+// Show top notice about the submission window status
+if (empty($statusMsg)) {
+    if ($isWithinWindowNow) {
+        $statusMsg = "<div class='alert alert-info'>Submissions are OPEN now. Allowed window: ".$submissionWindowHuman.".</div>";
+    } else {
+        $statusMsg = "<div class='alert alert-warning'>You can only submit during  ".$submissionWindowHuman.".</div>";
+    }
 }
 
 if (isset($_POST['submit_time'])) {
@@ -96,9 +201,10 @@ if (isset($_POST['submit_time'])) {
             $lastStatus = $lastSubmissionRow['status'];
         }
 
-        // Allow submission if the last status is denied or if today is Friday to Sunday
-        $currentDay = date('N'); // 1 (for Monday) through 7 (for Sunday)
-        if ($lastStatus === 'denied' || ($currentDay >= 5)) {
+        // Enforce submission only within configured submission window
+        $withinWindow = $isWithinWindowNow;
+
+        if ($withinWindow) {
             // Proceed with the rest of the code
             if (mysqli_num_rows($checkEntryResult) > 0 && $lastStatus !== 'denied') {
                 $statusMsg = "<div class='alert alert-danger'>You have already submitted your weekly time for this week.</div>";
@@ -149,7 +255,7 @@ if (isset($_POST['submit_time'])) {
                 $_SESSION['week_start_date'] = $weekStartDate; // Store the week start date
             }
         } else {
-            $statusMsg = "<div class='alert alert-danger'>Submissions can only be made from Friday to Sunday unless the last submission was denied.</div>";
+            $statusMsg = "<div class='alert alert-danger'>Submissions are allowed on: ".$submissionWindowHuman.". Current server time: ".date('l H:i:s')." (Asia/Manila).</div>";
         }
     }
 }
@@ -196,6 +302,19 @@ if (isset($_POST['submit_time'])) {
             overtimeInput.disabled = false; // Enable if ot_isactive is 1
         } else {
             overtimeInput.disabled = true; // Disable if ot_isactive is not 1
+        }
+
+        // Cycle the status alert: visible 3s, hidden 10s, repeat
+        const statusAlertEl = document.querySelector('.card-header .alert');
+        if (statusAlertEl) {
+            const cycle = () => {
+                statusAlertEl.style.display = '';
+                setTimeout(() => {
+                    statusAlertEl.style.display = 'none';
+                    setTimeout(cycle, 10000);
+                }, 3000);
+            };
+            cycle();
         }
     });
 </script>

@@ -4,6 +4,7 @@ ob_start();
 include '../Includes/session.php';
 // Include database connection
 include '../Includes/dbcon.php';
+include '../Includes/audit.php';
 
 // Initialize search variables
 $searchTerm = '';
@@ -57,6 +58,12 @@ if (isset($_GET['action']) && $_GET['action'] == 'approve' && isset($_GET['Id'])
         $updateEntryQuery = "UPDATE tbl_weekly_time_entries SET remaining_time = $remainingTime, status = 'submitted' WHERE id = '$entryId'";
         mysqli_query($conn, $updateEntryQuery);
 
+        // Audit log for approval
+        audit_log($conn, 'approve_submission', 'weekly_time_entry', (string)$entryId, [
+            'admissionNumber' => $admissionNumber,
+            'total_hours' => (float)$totalHours,
+            'new_remaining_time' => (float)$remainingTime
+        ]);
         // Redirect or show success message
         header("Location: approval.php?status=success");
         exit;
@@ -72,6 +79,11 @@ if (isset($_POST['deny_submission'])) {
     $updateEntryQuery = "UPDATE tbl_weekly_time_entries SET status = 'denied', remarks = '$remarks' WHERE id = '$entryId'";
     mysqli_query($conn, $updateEntryQuery);
 
+    // Audit log for deny
+    audit_log($conn, 'deny_submission', 'weekly_time_entry', (string)$entryId, [
+        'remarks' => $remarks
+    ]);
+
     // Redirect or show success message
     header("Location: approval.php?status=denied");
     exit;
@@ -84,6 +96,10 @@ if (isset($_POST['update_bonus'])) {
 
     $updateBonusQuery = "UPDATE tbl_weekly_time_entries SET bon_time = '$bonusTime' WHERE id = '$entryId'";
     mysqli_query($conn, $updateBonusQuery);
+    // Audit bonus update
+    audit_log($conn, 'update_bonus', 'weekly_time_entry', (string)$entryId, [
+        'bonus_time' => (float)$bonusTime
+    ]);
 }
 
 // Update remarks
@@ -92,6 +108,10 @@ if (isset($_POST['update_remarks'])) {
     $remarks = $_POST['remarks'];
 
     if (updateRemarks($conn, $entryId, $remarks)) {
+        // Audit remarks update
+        audit_log($conn, 'update_remarks', 'weekly_time_entry', (string)$entryId, [
+            'remarks' => $remarks
+        ]);
         header("Location: approval.php?status=remarks_updated");
         exit;
     }

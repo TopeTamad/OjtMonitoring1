@@ -3,6 +3,7 @@ ob_start();
 error_reporting(0);
 include '../Includes/session.php';
 include '../Includes/dbcon.php';
+include '../Includes/audit.php';
 
 $statusMsg = "";
 
@@ -63,6 +64,12 @@ if (isset($_POST['submit'])) {
         // Deactivate all other announcements
         $updateQuery = "UPDATE tblannouncement SET is_active = 0 WHERE admin_id = '$admin_id' AND id != LAST_INSERT_ID()";
         mysqli_query($conn, $updateQuery);
+        // Audit log for create announcement
+        $insertId = mysqli_insert_id($conn);
+        audit_log($conn, 'create', 'announcement', (string)$insertId, [
+            'content_preview' => mb_substr($content, 0, 120),
+            'image_path' => $imagePath
+        ]);
         
         $statusMsg = "<div class='alert alert-success'>Announcement created successfully!</div>";
     } else {
@@ -88,9 +95,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
         // Activate the selected announcement
         $updateQuery = "UPDATE tblannouncement SET is_active = 1 WHERE id = '$id'";
         mysqli_query($conn, $updateQuery);
+        // Audit log for activate announcement
+        audit_log($conn, 'activate', 'announcement', (string)$id, null);
     } elseif ($action == 'deactivate') {
         $updateQuery = "UPDATE tblannouncement SET is_active = 0 WHERE id = '$id'";
         mysqli_query($conn, $updateQuery);
+        // Audit log for deactivate announcement
+        audit_log($conn, 'deactivate', 'announcement', (string)$id, null);
     }
 
     // Redirect to avoid resubmission
@@ -103,6 +114,8 @@ if (isset($_GET['delete_id'])) {
     $delete_id = $_GET['delete_id'];
     $deleteQuery = "DELETE FROM tblannouncement WHERE id = '$delete_id'";
     if (mysqli_query($conn, $deleteQuery)) {
+        // Audit log for delete announcement
+        audit_log($conn, 'delete', 'announcement', (string)$delete_id, null);
         $statusMsg = "<div class='alert alert-danger'>Announcement deleted successfully!</div>";
     } else {
         $statusMsg = "<div class='alert alert-danger'>Error: " . mysqli_error($conn) . "</div>";
