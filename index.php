@@ -118,7 +118,7 @@ ob_end_flush();
             <div class="row">
               <div class="col-lg-12">
                 <div class="login-form">
-                <h5 align="center">OJT MONITORING SYSTEM</h5>
+                <h5 align="center">OJTS MONITORING SYSTEM</h5>
                   <div class="text-center">
                     <img src="img/logo/src-logo.jpg" style="width:100px;height:100px">
                     <br><br>
