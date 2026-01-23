@@ -4,6 +4,12 @@ include '../Includes/dbcon.php';
 
 //------------------------SAVE--------------------------------------------------
 
+// Ensure tbladmin has photo_path column
+$colCheck = mysqli_query($conn, "SHOW COLUMNS FROM tbladmin LIKE 'photo_path'");
+if ($colCheck && mysqli_num_rows($colCheck) == 0) {
+    @mysqli_query($conn, "ALTER TABLE tbladmin ADD COLUMN photo_path VARCHAR(255) NULL AFTER emailAddress");
+}
+
 if(isset($_POST['save'])){
     
     $firstName = $_POST['firstName'];
@@ -12,6 +18,23 @@ if(isset($_POST['save'])){
     $password = $_POST['password'];
     $dateCreated = date("Y-m-d");
 
+    // Optional photo upload
+    $admin_photo = '';
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] != UPLOAD_ERR_NO_FILE) {
+        $targetDir = "../uploads/";
+        $originalName = basename($_FILES['photo']['name']);
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+        $check = @getimagesize($_FILES['photo']['tmp_name']);
+        if ($check !== false && in_array($ext, $allowed) && $_FILES['photo']['size'] <= 2*1024*1024) {
+            $safeBase = preg_replace('/[^a-zA-Z0-9-_\.]/','_', pathinfo($originalName, PATHINFO_FILENAME));
+            $newName = 'admin_'.time().'_'.$safeBase.'.'.$ext;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetDir.$newName)) {
+                $admin_photo = $newName;
+            }
+        }
+    }
+
     // Check if the email already exists in the admin table
     $query = mysqli_query($conn, "SELECT * FROM tbladmin WHERE emailAddress ='$emailAddress'");
 
@@ -19,8 +42,8 @@ if(isset($_POST['save'])){
         $statusMsg = "<div class='alert alert-danger' style='margin-right:700px;'>This Email Address Already Exists!</div>";
     } else {
         // Insert into tbladmin
-        $insertQuery = mysqli_query($conn, "INSERT INTO tbladmin (firstName, lastName, emailAddress, password, dateCreated) 
-            VALUES ('$firstName', '$lastName', '$emailAddress', '$password', '$dateCreated')");
+        $insertQuery = mysqli_query($conn, "INSERT INTO tbladmin (firstName, lastName, emailAddress, photo_path, password, dateCreated) 
+            VALUES ('$firstName', '$lastName', '$emailAddress', ".(strlen($admin_photo)>0?"'".$conn->real_escape_string($admin_photo)."'":"NULL").", '$password', '$dateCreated')");
 
         if ($insertQuery) {
             // Insert into tbluser
@@ -53,9 +76,27 @@ if (isset($_POST['update'])) {
     $emailAddress = $_POST['emailAddress'];
     $password = $_POST['password'];
     $Id = $_POST['Id']; // Get the Id from the form
+    $existing_photo = isset($_POST['existing_photo']) ? $_POST['existing_photo'] : '';
+    $photo_to_save = $existing_photo;
+    // Optional new upload
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] != UPLOAD_ERR_NO_FILE) {
+        $targetDir = "../uploads/";
+        $originalName = basename($_FILES['photo']['name']);
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+        $check = @getimagesize($_FILES['photo']['tmp_name']);
+        if ($check !== false && in_array($ext, $allowed) && $_FILES['photo']['size'] <= 2*1024*1024) {
+            $safeBase = preg_replace('/[^a-zA-Z0-9-_\.]/','_', pathinfo($originalName, PATHINFO_FILENAME));
+            $newName = 'admin_'.time().'_'.$safeBase.'.'.$ext;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetDir.$newName)) {
+                $photo_to_save = $newName;
+            }
+        }
+    }
 
     // Update the admin details
-    $updateQuery = mysqli_query($conn, "UPDATE tbladmin SET firstName='$firstName', lastName='$lastName', emailAddress='$emailAddress', password='$password' WHERE Id='$Id'");
+    $photo_sql = strlen($photo_to_save)>0 ? "photo_path='".$conn->real_escape_string($photo_to_save)."'," : "photo_path=NULL,";
+    $updateQuery = mysqli_query($conn, "UPDATE tbladmin SET firstName='$firstName', lastName='$lastName', emailAddress='$emailAddress', ".$photo_sql." password='$password' WHERE Id='$Id'");
 
     // Update the password in tbluser
     $updateUser = mysqli_query($conn, "UPDATE tbluser SET password='$password' WHERE emailAddress='$emailAddress'");
@@ -151,7 +192,7 @@ if (isset($_GET['Id']) && isset($_GET['action']) && $_GET['action'] == "delete")
                   <?php echo $statusMsg; ?>
                 </div>
                 <div class="card-body">
-                  <form method="post">
+                  <form method="post" enctype="multipart/form-data">
                     <div class="form-group row mb-3">
                         <div class="col-xl-6">
                             <label class="form-control-label">Firstname<span class="text-danger ml-2">*</span></label>
@@ -160,6 +201,19 @@ if (isset($_GET['Id']) && isset($_GET['action']) && $_GET['action'] == "delete")
                         <div class="col-xl-6">
                             <label class="form-control-label">Lastname<span class="text-danger ml-2">*</span></label>
                             <input type="text" class="form-control" required name="lastName" value="<?php echo isset($row['lastName']) ? $row['lastName'] : ''; ?>" id="exampleInputLastName">
+                        </div>
+                    </div>
+                    <div class="form-group row mb-3">
+                        <div class="col-xl-6">
+                            <label class="form-control-label">Profile Photo (optional)</label>
+                            <input type="file" class="form-control" name="photo" accept="image/*">
+                            <input type="hidden" name="existing_photo" value="<?php echo isset($row['photo_path']) ? htmlspecialchars($row['photo_path']) : ''; ?>">
+                        </div>
+                        <div class="col-xl-6">
+                            <?php if (isset($row['photo_path']) && !empty($row['photo_path'])): ?>
+                                <label class="form-control-label d-block">Current Photo</label>
+                                <img src="../uploads/<?php echo htmlspecialchars($row['photo_path']); ?>" alt="Admin" style="max-height:80px;border-radius:6px;">
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="form-group row mb-3">
@@ -203,6 +257,7 @@ if (isset($_GET['Id']) && isset($_GET['action']) && $_GET['action'] == "delete")
                         <thead class="thead-light">
                           <tr>
                             <th>#</th>
+                            <th>Photo</th>
                             <th>First Name</th>
                             <th>Last Name</th>
                             <th>Email Address</th>
@@ -226,6 +281,7 @@ if (isset($_GET['Id']) && isset($_GET['action']) && $_GET['action'] == "delete")
                                   echo "
                                   <tr>
                                       <td>".$sn."</td>
+                                      <td>".(isset($rows['photo_path']) && $rows['photo_path'] ? '<img src=../uploads/'.htmlspecialchars($rows['photo_path']).' style=height:40px;width:40px;object-fit:cover;border-radius:50%>' : '<img src=img/user-icn.png style=height:40px;width:40px;border-radius:50%>')."</td>
                                       <td>".$rows['firstName']."</td>
                                       <td>".$rows['lastName']."</td>
                                       <td>".$rows['emailAddress']."</td>

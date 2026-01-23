@@ -17,6 +17,14 @@ $company = "";
 $remaining_time = "";
 $comp_link = "";
 $password = "";
+// Profile photo file name (stored in DB). We'll save just the basename in uploads/.
+$photo_path = "";
+
+// Ensure tblstudents has photo_path column
+$colCheck = mysqli_query($conn, "SHOW COLUMNS FROM tblstudents LIKE 'photo_path'");
+if ($colCheck && mysqli_num_rows($colCheck) == 0) {
+    @mysqli_query($conn, "ALTER TABLE tblstudents ADD COLUMN photo_path VARCHAR(255) NULL AFTER address");
+}
 
 //------------------------SAVE--------------------------------------------------
 
@@ -40,6 +48,30 @@ if(isset($_POST['save'])){
   
     $usertype = $_POST['user_type'];
     $usernew = "Student";
+    
+    // Handle optional profile photo upload
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] != UPLOAD_ERR_NO_FILE) {
+        $targetDir = "../uploads/"; // Root uploads directory
+        $originalName = basename($_FILES['photo']['name']);
+        $imageFileType = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+        $check = @getimagesize($_FILES['photo']['tmp_name']);
+        if ($check === false) {
+            $statusMsg = "<div class='alert alert-danger'>Selected file is not an image.</div>";
+        } elseif ($_FILES['photo']['size'] > 2 * 1024 * 1024) {
+            $statusMsg = "<div class='alert alert-danger'>Image too large. Max 2MB.</div>";
+        } elseif (!in_array($imageFileType, $allowed)) {
+            $statusMsg = "<div class='alert alert-danger'>Invalid image type. Allowed: JPG, JPEG, PNG, GIF, WEBP.</div>";
+        } else {
+            $safeBase = preg_replace('/[^a-zA-Z0-9-_\.]/','_', pathinfo($originalName, PATHINFO_FILENAME));
+            $newName = 'student_' . time() . '_' . $safeBase . '.' . $imageFileType;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetDir . $newName)) {
+                $photo_path = $newName;
+            } else {
+                $statusMsg = "<div class='alert alert-danger'>Failed to upload image.</div>";
+            }
+        }
+    }
      
     // Check if admission number exists
     $query = mysqli_query($conn, "SELECT * FROM tblstudents WHERE admissionNumber ='$admissionNumber'");
@@ -55,8 +87,8 @@ if(isset($_POST['save'])){
         $statusMsg = "<div class='alert alert-danger' style='margin-right:700px;'>This Email Address Already Exists!</div>";
     } else {
         // Insert into tblstudents with remaining_time set to render_time
-        $query = mysqli_query($conn, "INSERT INTO tblstudents(admissionNumber, firstName, lastName, classId, contact, email, address, comp_name, password, dateCreated, render_time, remaining_time, comp_link) 
-        VALUES ('$admissionNumber', '$firstName', '$lastName', '$classId', '$contact', '$email', '$address', '$company', '$sampPass_2', '$dateCreated', '$render_time', '$render_time', '$comp_link')");
+        $query = mysqli_query($conn, "INSERT INTO tblstudents(admissionNumber, firstName, lastName, classId, contact, email, address, photo_path, comp_name, password, dateCreated, render_time, remaining_time, comp_link) 
+        VALUES ('$admissionNumber', '$firstName', '$lastName', '$classId', '$contact', '$email', '$address', " . (strlen($photo_path)>0?"'".$conn->real_escape_string($photo_path)."'":"NULL") . ", '$company', '$sampPass_2', '$dateCreated', '$render_time', '$render_time', '$comp_link')");
   
         $query1 = mysqli_query($conn, "INSERT INTO tbluser(emailAddress, password, user_type) 
         VALUES ('$email', '$sampPass_2', '$usernew')");
@@ -83,9 +115,27 @@ if (isset($_POST['update'])) {
     $render_time = $_POST['render_time'];
     $comp_link = $_POST['comp_link'];
     $password = $_POST['password'];
+    $existing_photo = isset($_POST['existing_photo']) ? $_POST['existing_photo'] : '';
+    $photo_to_save = $existing_photo;
+    // Handle optional new photo upload on update
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] != UPLOAD_ERR_NO_FILE) {
+        $targetDir = "../uploads/";
+        $originalName = basename($_FILES['photo']['name']);
+        $imageFileType = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+        $check = @getimagesize($_FILES['photo']['tmp_name']);
+        if ($check !== false && $_FILES['photo']['size'] <= 2 * 1024 * 1024 && in_array($imageFileType, $allowed)) {
+            $safeBase = preg_replace('/[^a-zA-Z0-9-_\.]/','_', pathinfo($originalName, PATHINFO_FILENAME));
+            $newName = 'student_' . time() . '_' . $safeBase . '.' . $imageFileType;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetDir . $newName)) {
+                $photo_to_save = $newName;
+            }
+        }
+    }
   
     // Update the student details without changing remaining_time
-    $query = mysqli_query($conn, "UPDATE tblstudents SET admissionNumber='$admissionNumber', firstName='$firstName', lastName='$lastName', classId='$classId', contact='$contact', email='$email', address='$address', comp_name='$company', password='$password', render_time='$render_time', comp_link='$comp_link' WHERE Id='$Id'");
+    $photo_sql = strlen($photo_to_save)>0 ? "photo_path='".$conn->real_escape_string($photo_to_save)."'," : "photo_path=NULL,";
+    $query = mysqli_query($conn, "UPDATE tblstudents SET admissionNumber='$admissionNumber', firstName='$firstName', lastName='$lastName', classId='$classId', contact='$contact', email='$email', address='$address', ".$photo_sql." comp_name='$company', password='$password', render_time='$render_time', comp_link='$comp_link' WHERE Id='$Id'");
   
     // Update the user details
     $query1 = mysqli_query($conn, "UPDATE tbluser SET emailAddress='$email', password='$password' WHERE emailAddress='$email'");
@@ -235,9 +285,10 @@ if (isset($_POST['update_remaining_time'])) {
                                     <h6 class="m-0 font-weight-bold text-primary"><?php echo isset($studentData) ? 'Edit Student' : 'Create Students'; ?></h6>
                                 </div>
                                 <div class="card-body">
-                                    <form method="post">
+                                    <form method="post" enctype="multipart/form-data">
                                         <input type="hidden" name="Id" value="<?php echo isset($studentData) ? $studentData['Id'] : ''; ?>">
                                         <input type="hidden" name="admissionNumber" value="<?php echo isset($studentData) ? $studentData['admissionNumber'] : ''; ?>">
+                                        <input type="hidden" name="existing_photo" value="<?php echo isset($studentData) ? (isset($studentData['photo_path']) ? htmlspecialchars($studentData['photo_path']) : '') : ''; ?>">
                                         <div class="form-group row mb-3">
                                             <div class="col-xl-6">
                                                 <label class="form-control-label">School ID Number<span class="text-danger ml-2">*</span></label>
@@ -276,6 +327,19 @@ if (isset($_POST['update_remaining_time'])) {
                                             <div class="col-xl-6">
                                                 <label class="form-control-label">Lastname<span class="text-danger ml-2">*</span></label>
                                                 <input type="text" class="form-control" name="lastName" value="<?php echo isset($studentData) ? $studentData['lastName'] : ''; ?>" required>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row mb-3">
+                                            <div class="col-xl-6">
+                                                <label class="form-control-label">Profile Photo (optional)</label>
+                                                <input type="file" class="form-control" name="photo" accept="image/*">
+                                            </div>
+                                            <div class="col-xl-6">
+                                                <?php if (isset($studentData) && !empty($studentData['photo_path'])): ?>
+                                                    <label class="form-control-label d-block">Current Photo</label>
+                                                    <img src="../uploads/<?php echo htmlspecialchars($studentData['photo_path']); ?>" alt="Profile" style="max-height:80px;border-radius:6px;">
+                                                <?php endif; ?>
                                             </div>
                                         </div>
 
@@ -378,6 +442,7 @@ if (isset($_POST['update_remaining_time'])) {
                                                 <thead class="thead-light">
                                                     <tr>
                                                         <th>#</th>
+                                                        <th>Photo</th>
                                                         <th>Student ID</th>
                                                         <th>First Name</th>
                                                         <th>Last Name</th>
@@ -395,7 +460,7 @@ if (isset($_POST['update_remaining_time'])) {
                                                     <?php
                                                     $archiveExists = mysqli_query($conn, "SHOW TABLES LIKE 'tblstudents_archive'");
                                                     if ($archiveExists && mysqli_num_rows($archiveExists) > 0) {
-                                                        $query = "SELECT s.Id, c.className, s.admissionNumber, s.firstName, s.lastName, s.contact, s.email, s.address, s.dateCreated, s.comp_name 
+                                                        $query = "SELECT s.Id, c.className, s.admissionNumber, s.firstName, s.lastName, s.contact, s.email, s.address, s.photo_path, s.dateCreated, s.comp_name 
                                                         FROM tblstudents s
                                                         INNER JOIN tblclass c ON c.Id = s.classId
                                                         LEFT JOIN tblstudents_archive a ON a.Id = s.Id
@@ -408,7 +473,7 @@ if (isset($_POST['update_remaining_time'])) {
                                                           )";
                                                     } else {
                     
-                                                        $query = "SELECT s.Id, c.className, s.admissionNumber, s.firstName, s.lastName, s.contact, s.email, s.address, s.dateCreated, s.comp_name 
+                                                        $query = "SELECT s.Id, c.className, s.admissionNumber, s.firstName, s.lastName, s.contact, s.email, s.address, s.photo_path, s.dateCreated, s.comp_name 
                                                         FROM tblstudents s
                                                         INNER JOIN tblclass c ON c.Id = s.classId
                                                         WHERE NOT EXISTS (
@@ -428,6 +493,10 @@ if (isset($_POST['update_remaining_time'])) {
                                                             echo "
                                                             <tr>
                                                                 <td>".$sn."</td>
+                                                                <td>".(isset($rows['photo_path']) && $rows['photo_path']
+                                                                    ? '<img src="../uploads/'.htmlspecialchars($rows['photo_path']).'" alt="Photo" style="height:40px;width:40px;object-fit:cover;border-radius:50%">'
+                                                                    : '<img src="img/user-icn.png" style="height:40px;width:40px;border-radius:50%">'
+                                                                )."</td>
                                                                 <td>".$rows['admissionNumber']."</td>
                                                                 <td>".$rows['firstName']."</td>
                                                                 <td>".$rows['lastName']."</td>

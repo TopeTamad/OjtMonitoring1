@@ -7,6 +7,7 @@ $rs = $conn->query($query);
 $num = $rs->num_rows;
 $rows = $rs->fetch_assoc();
 $fullName = $rows['firstName']." ".$rows['lastName'];
+$photoPath = isset($rows['photo_path']) && $rows['photo_path'] ? '../uploads/'.htmlspecialchars($rows['photo_path']) : 'img/user-icn.png';
 
 // Fetch the count of replied reports
 $notificationQuery = "SELECT COUNT(*) as count FROM tblreports WHERE status = 'replied' AND admissionNumber = ?";
@@ -63,7 +64,7 @@ $repliedCount = $notificationRow['count'];
         <li class="nav-item dropdown no-arrow">
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
-                <img class="img-profile rounded-circle" src="img/user-icn.png" style="max-width: 60px">
+                <img class="img-profile rounded-circle" src="<?php echo $photoPath; ?>" style="max-width: 60px; height:60px; object-fit:cover;">
                 <span class="ml-2 d-none d-lg-inline text-white small"><b>Welcome <?php echo $fullName;?></b></span>
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">

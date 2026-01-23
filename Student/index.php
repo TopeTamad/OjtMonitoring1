@@ -5,8 +5,38 @@ include '../Includes/dbcon.php';
 
 $statusMsg = "";
 
+// Handle student profile photo upload
+if (isset($_POST['update_photo'])) {
+  if (isset($_FILES['photo']) && $_FILES['photo']['error'] != UPLOAD_ERR_NO_FILE) {
+    $targetDir = "../uploads/"; // save to shared root uploads directory
+    $originalName = basename($_FILES['photo']['name']);
+    $imageFileType = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $allowed = ['jpg','jpeg','png','gif','webp'];
+    $check = @getimagesize($_FILES['photo']['tmp_name']);
+    if ($check === false) {
+      $statusMsg = "<div class='alert alert-danger'>Selected file is not an image.</div>";
+    } elseif ($_FILES['photo']['size'] > 2 * 1024 * 1024) {
+      $statusMsg = "<div class='alert alert-danger'>Image too large. Max 2MB.</div>";
+    } elseif (!in_array($imageFileType, $allowed)) {
+      $statusMsg = "<div class='alert alert-danger'>Invalid image type. Allowed: JPG, JPEG, PNG, GIF, WEBP.</div>";
+    } else {
+      $safeBase = preg_replace('/[^a-zA-Z0-9-_\.]/','_', pathinfo($originalName, PATHINFO_FILENAME));
+      $newName = 'student_' . time() . '_' . $safeBase . '.' . $imageFileType;
+      if (move_uploaded_file($_FILES['photo']['tmp_name'], __DIR__ . '/' . $targetDir . $newName)) {
+        $esc = $conn->real_escape_string($newName);
+        $conn->query("UPDATE tblstudents SET photo_path='$esc' WHERE Id='".$_SESSION['userId']."'");
+        $statusMsg = "<div class='alert alert-success'>Profile photo updated.</div>";
+      } else {
+        $statusMsg = "<div class='alert alert-danger'>Failed to upload image.</div>";
+      }
+    }
+  } else {
+    $statusMsg = "<div class='alert alert-warning'>No image selected.</div>";
+  }
+}
+
 // Fetch student class information
-$query = "SELECT tblclass.className, tblstudents.remaining_time
+$query = "SELECT tblclass.className, tblstudents.remaining_time, tblstudents.photo_path, tblstudents.firstName, tblstudents.lastName
           FROM tblstudents
           INNER JOIN tblclass ON tblclass.Id = tblstudents.classId
           WHERE tblstudents.Id = '$_SESSION[userId]'";
@@ -16,9 +46,16 @@ $num = $rs->num_rows;
 $rrw = $rs->fetch_assoc();
 
 $remainingTime = $rrw['remaining_time']; // Get remaining time from the fetched data
+$studentFullName = trim(($rrw['firstName'] ?? '').' '.($rrw['lastName'] ?? ''));
+$studentPhotoPath = !empty($rrw['photo_path']) ? '../uploads/'.htmlspecialchars($rrw['photo_path']) : 'img/user-icn.png';
 
-// Fetch the latest active announcement including image_path
-$announcementQuery = "SELECT adminName, content, date_created, image_path FROM tblannouncement WHERE is_active = 1 ORDER BY date_created DESC LIMIT 1"; // Fetch the latest active announcement
+// Fetch the latest active announcement including admin photo
+$announcementQuery = "SELECT t.adminName, t.content, t.date_created, t.image_path, a.photo_path AS admin_photo
+                      FROM tblannouncement t
+                      LEFT JOIN tbladmin a ON a.Id = t.admin_id
+                      WHERE t.is_active = 1
+                      ORDER BY t.date_created DESC
+                      LIMIT 1";
 $announcementResult = $conn->query($announcementQuery);
 ?>
 
@@ -116,8 +153,25 @@ $announcementResult = $conn->query($announcementQuery);
               <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
             </ol>
           </div>
+          <?php if (!empty($statusMsg)) { echo $statusMsg; } ?>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+  <!-- Profile Card -->
+  <div class="bg-white shadow-lg rounded-lg p-6 flex items-center">
+    <img src="<?php echo $studentPhotoPath; ?>" alt="Profile" class="w-16 h-16 rounded-full object-cover mr-4">
+    <div>
+      <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
+      <div class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
+    </div>
+  </div>
+  <!-- Upload New Photo Card -->
+  <div class="bg-white shadow-lg rounded-lg p-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-3">
+      <div class="text-xs font-semibold text-gray-600 uppercase">Update Profile Photo</div>
+      <input type="file" name="photo" accept="image/*" class="block w-full text-sm text-gray-700" />
+      <button type="submit" name="update_photo" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upload</button>
+    </form>
+  </div>
   <!-- Remaining Time Card Example -->
   <div class="bg-white shadow-lg rounded-lg p-6 transition-transform transform hover:scale-105 hover:shadow-xl flex items-center">
     <div class="flex-shrink-0">
@@ -142,8 +196,12 @@ $announcementResult = $conn->query($announcementQuery);
       <ul class="list-none">
         <?php if ($announcementResult->num_rows > 0): ?>
           <?php $announcement = $announcementResult->fetch_assoc(); ?>
+          <?php $adminAvatar = (!empty($announcement['admin_photo'])) ? '../uploads/'.htmlspecialchars($announcement['admin_photo']) : 'img/user-icn.png'; ?>
           <li class="border-b border-gray-200 pb-4 mb-4">
-            <p class="mb-1 text-gray-600">Published by: <strong><?php echo htmlspecialchars($announcement['adminName']); ?></strong></p>
+            <div class="flex items-center mb-2">
+              <img src="<?php echo $adminAvatar; ?>" alt="Admin" class="w-8 h-8 rounded-full object-cover mr-2">
+              <p class="mb-0 text-gray-600">Published by: <strong><?php echo htmlspecialchars($announcement['adminName']); ?></strong></p>
+            </div>
             <p class="announcement-content text-lg font-semibold text-gray-800"><strong><?php echo htmlspecialchars($announcement['content']); ?></strong></p>
             <?php if (!empty($announcement['image_path'])): ?>
               <div class="mt-2">
