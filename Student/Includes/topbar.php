@@ -21,9 +21,17 @@ $repliedCount = $notificationRow['count'];
 
 <head>
 <meta name="theme-color" content="#4169E1"> 
+<style>
+  /* Mobile-only tweaks for student topbar */
+  @media (max-width: 767.98px) {
+    .student-topbar .img-profile { width: 44px !important; height: 44px !important; }
+    .student-topbar .navbar-nav { padding-right: 1.25rem !important; }
+    .student-topbar #userDropdown { padding-right: 0 !important; }
+  }
+</style>
 </head>
 
-<nav class="navbar navbar-expand navbar-light bg-gradient-primary topbar mb-4 static-top">
+<nav class="navbar navbar-expand navbar-light bg-gradient-primary topbar mb-2 mb-md-4 static-top pr-0 pr-md-3 student-topbar">
 <a href="index.php" class="nav-link text-white">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7h20L12 2z" />
@@ -32,7 +40,7 @@ $repliedCount = $notificationRow['count'];
     Home
 </a>
     <div class="text-white big" style="margin-left:100px;"></div>
-    <ul class="navbar-nav ml-auto">
+    <ul class="navbar-nav ml-auto pr-0">
         <li class="nav-item dropdown no-arrow">
             <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
@@ -62,7 +70,7 @@ $repliedCount = $notificationRow['count'];
 
         <div class="topbar-divider d-none d-sm-block"></div>
         <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
+            <a class="nav-link dropdown-toggle pr-0 pr-md-2 mr-0 mr-md-0" href="#" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
                 <img class="img-profile" src="<?php echo $photoPath; ?>" style="width:60px; height:60px; border-radius:50%; object-fit:cover; aspect-ratio:1/1;">
                 <span class="ml-2 d-none d-lg-inline text-white small"><b>Welcome <?php echo $fullName;?></b></span>

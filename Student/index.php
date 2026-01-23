@@ -146,17 +146,57 @@ $announcementResult = $conn->query($announcementQuery);
         <!-- Topbar -->
 
         <!-- Container Fluid-->
-        <div class="container mx-auto p-4">
-          <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-gray-800">Student Dashboard (<?php echo htmlspecialchars($rrw['className']); ?>)</h1>
-            <ol class="breadcrumb">
+        <div class="container mx-auto px-4 pt-2 md:pt-4 pb-4">
+          <div class="flex flex-col items-start gap-1 mb-1 md:mb-2">
+            <h1 class="text-2xl font-bold text-gray-800">Student Dashboard</h1>
+            <ol class="breadcrumb m-0 p-0">
               <li class="breadcrumb-item"><a href="./" class="text-blue-500">Home</a></li>
               <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
             </ol>
           </div>
           <?php if (!empty($statusMsg)) { echo $statusMsg; } ?>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+          <!-- Mobile: Combined Profile-style Card -->
+          <div class="md:hidden mt-1 mb-3">
+            <div class="bg-white shadow-lg rounded-lg p-6">
+              <div class="flex flex-col items-center text-center">
+                <div class="relative">
+                  <img src="<?php echo $studentPhotoPath; ?>" alt="Profile" class="w-36 h-36 rounded-full object-cover border-4 border-white shadow">
+                  <form method="post" enctype="multipart/form-data" class="absolute -bottom-1 -right-1">
+                    <input id="mobile-photo-input" type="file" name="photo" accept="image/*" class="hidden" onchange="this.form.submit()" />
+                    <button type="button" onclick="document.getElementById('mobile-photo-input').click()" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center border-2 border-white shadow">
+                      <i class="fas fa-camera"></i>
+                    </button>
+                    <input type="hidden" name="update_photo" value="1" />
+                  </form>
+                </div>
+                <div class="mt-4">
+                  <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
+                  <div class="text-2xl font-bold text-gray-800 leading-snug break-words"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
+                  <div class="text-sm text-gray-600 mt-1">Section: <?php echo htmlspecialchars($rrw['className']); ?></div>
+                </div>
+                <div class="mt-5 w-full grid grid-cols-1 gap-3">
+                  <div class="flex items-center justify-center bg-blue-50 rounded-lg p-4">
+                    <i class="fas fa-building text-blue-600 mr-3"></i>
+                    <div>
+                      <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Company</div>
+                      <div class="text-lg font-bold text-gray-800 break-words"><?php echo htmlspecialchars($studentCompany ?: 'N/A'); ?></div>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-center bg-green-50 rounded-lg p-4">
+                    <i class="fas fa-clock text-green-600 mr-3"></i>
+                    <div>
+                      <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Remaining Time</div>
+                      <div class="text-2xl font-extrabold text-gray-800"><?php echo htmlspecialchars($remainingTime); ?> hours</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Desktop/Tablet: Three Cards -->
+          <div class="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
   <!-- Profile + Upload Card -->
   <div class="bg-white shadow-lg rounded-lg p-6">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -165,6 +205,7 @@ $announcementResult = $conn->query($announcementQuery);
         <div>
           <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
           <div class="text-lg md:text-xl font-bold text-gray-800 leading-snug break-words max-w-[14rem] md:max-w-none"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
+          <div class="text-sm text-gray-600 mt-1">Section: <?php echo htmlspecialchars($rrw['className']); ?></div>
         </div>
       </div>
       <form method="post" enctype="multipart/form-data" class="w-full md:w-auto space-y-2 md:space-y-1">
@@ -200,9 +241,9 @@ $announcementResult = $conn->query($announcementQuery);
       <div class="text-3xl font-extrabold text-gray-800"><?php echo htmlspecialchars($remainingTime); ?> hours</div>
     </div>
   </div>
-</div>
-<br><br>
-<div class="mb-4">
+ </div>
+
+<div class="-mt-2 md:mt-0 mb-3">
   <div class="bg-white shadow-lg rounded-lg p-6 announcement-card relative">
     <div class="flex justify-between items-center">
       <h6 class="announcement-header text-xl font-bold text-blue-600 text-center w-full">Latest Announcement</h6>
