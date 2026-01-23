@@ -36,7 +36,7 @@ if (isset($_POST['update_photo'])) {
 }
 
 // Fetch student class information
-$query = "SELECT tblclass.className, tblstudents.remaining_time, tblstudents.photo_path, tblstudents.firstName, tblstudents.lastName
+$query = "SELECT tblclass.className, tblstudents.remaining_time, tblstudents.photo_path, tblstudents.firstName, tblstudents.lastName, tblstudents.comp_name
           FROM tblstudents
           INNER JOIN tblclass ON tblclass.Id = tblstudents.classId
           WHERE tblstudents.Id = '$_SESSION[userId]'";
@@ -48,6 +48,7 @@ $rrw = $rs->fetch_assoc();
 $remainingTime = $rrw['remaining_time']; // Get remaining time from the fetched data
 $studentFullName = trim(($rrw['firstName'] ?? '').' '.($rrw['lastName'] ?? ''));
 $studentPhotoPath = !empty($rrw['photo_path']) ? '../uploads/'.htmlspecialchars($rrw['photo_path']) : 'img/user-icn.png';
+$studentCompany = $rrw['comp_name'] ?? '';
 
 // Fetch the latest active announcement including admin photo
 $announcementQuery = "SELECT t.adminName, t.content, t.date_created, t.image_path, a.photo_path AS admin_photo
@@ -156,23 +157,36 @@ $announcementResult = $conn->query($announcementQuery);
           <?php if (!empty($statusMsg)) { echo $statusMsg; } ?>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-  <!-- Profile Card -->
-  <div class="bg-white shadow-lg rounded-lg p-6 flex items-center">
-    <img src="<?php echo $studentPhotoPath; ?>" alt="Profile" class="w-16 h-16 rounded-full object-cover mr-4">
-    <div>
-      <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
-      <div class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
+  <!-- Profile + Upload Card -->
+  <div class="bg-white shadow-lg rounded-lg p-6">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center">
+        <img src="<?php echo $studentPhotoPath; ?>" alt="Profile" class="w-16 h-16 rounded-full object-cover mr-4">
+        <div>
+          <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
+          <div class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
+        </div>
+      </div>
+      <form method="post" enctype="multipart/form-data" class="space-y-2 ml-4">
+        <div class="text-xs font-semibold text-gray-600 uppercase">Update Profile Photo</div>
+        <input type="file" name="photo" accept="image/*" class="block w-full text-sm text-gray-700" />
+        <button type="submit" name="update_photo" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upload</button>
+      </form>
     </div>
   </div>
-  <!-- Upload New Photo Card -->
-  <div class="bg-white shadow-lg rounded-lg p-6">
-    <form method="post" enctype="multipart/form-data" class="space-y-3">
-      <div class="text-xs font-semibold text-gray-600 uppercase">Update Profile Photo</div>
-      <input type="file" name="photo" accept="image/*" class="block w-full text-sm text-gray-700" />
-      <button type="submit" name="update_photo" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upload</button>
-    </form>
+  <!-- Company Card (Middle) -->
+  <div class="bg-white shadow-lg rounded-lg p-6 flex items-center">
+    <div class="flex-shrink-0">
+      <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
+        <i class="fas fa-building fa-2x text-blue-600"></i>
+      </div>
+    </div>
+    <div class="ml-4">
+      <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Company</div>
+      <div class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($studentCompany ?: 'N/A'); ?></div>
+    </div>
   </div>
-  <!-- Remaining Time Card Example -->
+  <!-- Remaining Time Card -->
   <div class="bg-white shadow-lg rounded-lg p-6 transition-transform transform hover:scale-105 hover:shadow-xl flex items-center">
     <div class="flex-shrink-0">
       <div class="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full">
