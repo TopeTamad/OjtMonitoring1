@@ -173,7 +173,7 @@ $announcementResult = $conn->query($announcementQuery);
                 <div class="mt-4">
                   <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
                   <div class="text-2xl font-bold text-gray-800 leading-snug break-words"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
-                  <div class="text-sm text-gray-600 mt-1">Section: <?php echo htmlspecialchars($rrw['className']); ?></div>
+                  <div class="text-sm text-gray-600 mt-1"> <?php echo htmlspecialchars($rrw['className']); ?></div>
                 </div>
                 <div class="mt-5 w-full grid grid-cols-1 gap-3">
                   <div class="flex items-center justify-center bg-blue-50 rounded-lg p-4">
