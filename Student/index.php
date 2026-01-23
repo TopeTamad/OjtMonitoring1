@@ -205,7 +205,7 @@ $announcementResult = $conn->query($announcementQuery);
         <div>
           <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
           <div class="text-lg md:text-xl font-bold text-gray-800 leading-snug break-words max-w-[14rem] md:max-w-none"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
-          <div class="text-sm text-gray-600 mt-1">Section: <?php echo htmlspecialchars($rrw['className']); ?></div>
+          <div class="text-sm text-gray-600 mt-1"><?php echo htmlspecialchars($rrw['className']); ?></div>
         </div>
       </div>
       <form method="post" enctype="multipart/form-data" class="w-full md:w-auto space-y-2 md:space-y-1">
@@ -257,7 +257,7 @@ $announcementResult = $conn->query($announcementQuery);
           <li class="border-b border-gray-200 pb-4 mb-4">
             <div class="flex items-center mb-2">
               <img src="<?php echo $adminAvatar; ?>" alt="Admin" class="w-8 h-8 rounded-full object-cover mr-2">
-              <p class="mb-0 text-gray-600">Published by: <strong><?php echo htmlspecialchars($announcement['adminName']); ?></strong></p>
+              <p class="mb-0 text-gray-600"> <strong><?php echo htmlspecialchars($announcement['adminName']); ?></strong></p>
             </div>
             <p class="announcement-content text-lg font-semibold text-gray-800"><strong><?php echo htmlspecialchars($announcement['content']); ?></strong></p>
             <?php if (!empty($announcement['image_path'])): ?>
