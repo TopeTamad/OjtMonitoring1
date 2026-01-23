@@ -159,18 +159,20 @@ $announcementResult = $conn->query($announcementQuery);
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
   <!-- Profile + Upload Card -->
   <div class="bg-white shadow-lg rounded-lg p-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div class="flex items-center">
-        <img src="<?php echo $studentPhotoPath; ?>" alt="Profile" class="w-16 h-16 rounded-full object-cover mr-4">
+        <img src="<?php echo $studentPhotoPath; ?>" alt="Profile" class="w-14 h-14 md:w-16 md:h-16 rounded-full object-cover mr-3 md:mr-4">
         <div>
           <div class="text-xs font-semibold text-gray-600 uppercase mb-1">Student</div>
-          <div class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
+          <div class="text-lg md:text-xl font-bold text-gray-800 leading-snug break-words max-w-[14rem] md:max-w-none"><?php echo htmlspecialchars($studentFullName ?: ''); ?></div>
         </div>
       </div>
-      <form method="post" enctype="multipart/form-data" class="space-y-2 ml-4">
-        <div class="text-xs font-semibold text-gray-600 uppercase">Update Profile Photo</div>
-        <input type="file" name="photo" accept="image/*" class="block w-full text-sm text-gray-700" />
-        <button type="submit" name="update_photo" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upload</button>
+      <form method="post" enctype="multipart/form-data" class="w-full md:w-auto space-y-2 md:space-y-1">
+        <div class="text-xs font-semibold text-gray-600 uppercase hidden md:block">Update Profile Photo</div>
+        <div class="flex items-center gap-2">
+          <input type="file" name="photo" accept="image/*" class="flex-1 block w-full text-sm text-gray-700" />
+          <button type="submit" name="update_photo" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 whitespace-nowrap">Upload</button>
+        </div>
       </form>
     </div>
   </div>
