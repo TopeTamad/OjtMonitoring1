@@ -5,6 +5,8 @@ include '../Includes/session.php';
 include '../Includes/dbcon.php';
 include '../Includes/audit.php';
 
+date_default_timezone_set('Asia/Manila');
+
 $statusMsg = "";
 
 // Check if the form is submitted
@@ -230,7 +232,7 @@ if (isset($_GET['statusMsg'])) {
                                                                     No Image
                                                                 <?php endif; ?>
                                                             </td>
-                                                            <td><?php echo date('F j, Y, g:i a', strtotime($row['date_created'])); ?></td>
+                                                            <td><?php $dt = new DateTime($row['date_created']); $dt->setTimezone(new DateTimeZone('Asia/Manila')); echo $dt->format('F j, Y, g:i a'); ?></td>
                                                             <td>
                                                                 <?php echo $row['is_active'] ? 'Active' : 'Inactive'; ?>
                                                             </td>
